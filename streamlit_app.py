@@ -20,12 +20,20 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from concurrent.futures import ThreadPoolExecutor
+
 from app.api_client import (
     check_api_health,
     request_flight_prediction,
     request_gender_prediction,
 )
-from app.config import DATASET_DIR, FLIGHT_API_URL, GENDER_API_URL, PROJECT_ROOT
+from app.config import (
+    DATASET_DIR,
+    FLIGHT_API_URL,
+    GENDER_API_URL,
+    HEALTH_TIMEOUT_SECONDS,
+    PROJECT_ROOT,
+)
 from app.gender_features import EXPERIMENTAL_GENDER_NOTICE
 from app.recommender import ONE_HOTEL_LIMITATION_NOTE, TravelPackageRecommender
 
@@ -477,10 +485,13 @@ def load_platform_resources():
 
 @st.cache_data(ttl=15, show_spinner=False)
 def get_live_api_statuses() -> Dict[str, Dict[str, Any]]:
-    return {
-        "flight": check_api_health(FLIGHT_API_URL, timeout=2.5),
-        "gender": check_api_health(GENDER_API_URL, timeout=2.5),
-    }
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_fut = pool.submit(check_api_health, FLIGHT_API_URL, HEALTH_TIMEOUT_SECONDS)
+        g_fut = pool.submit(check_api_health, GENDER_API_URL, HEALTH_TIMEOUT_SECONDS)
+        return {
+            "flight": f_fut.result(),
+            "gender": g_fut.result(),
+        }
 
 
 def navigate_to(page_name: str) -> None:
