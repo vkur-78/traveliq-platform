@@ -184,7 +184,7 @@ All source tables live untouched in `travel_capstone_dataset/`:
 
 ### Gender Classification API (`app/gender_api.py` · `https://traveliq-gender-api.onrender.com`)
 - `GET /health` → Returns `200 OK` with `artifact_size_kb: 40.4`, `artifact_version: "2.0-lightweight-binary"`, and `classes: ["female", "male"]`.
-- `POST /predict-gender` → Validates `name`, `company`, and `age` (`18–100`) and returns calibrated probabilities + `experimental_notice`.
+- `POST /predict-gender` → Validates `name`, `company`, and `age` (`1–120` in API; `18–100` in corporate UI) and returns calibrated probabilities + `experimental_notice`.
 ```json
 // Example Request
 {"name": "Wilma Mcinnis", "company": "4You", "age": 38}
