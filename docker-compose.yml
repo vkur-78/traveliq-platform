@@ -1,0 +1,127 @@
+# ==============================================================================
+# TRAVELIQ — Travel Intelligence Platform (Full-Stack Docker Compose)
+#
+# Services:
+#   - mlflow       (port 5000): MLflow Tracking Server & Model Registry
+#   - flight-api   (port 5001): Flight Price Prediction REST API (Gunicorn)
+#   - gender-api   (port 5002): Lightweight Gender Classification API (Gunicorn)
+#   - streamlit-ui (port 8501): TRAVELIQ Interactive Web Application
+#
+# Usage:
+#   docker compose up --build -d
+#   docker compose ps
+# ==============================================================================
+
+name: traveliq
+
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: traveliq-mlflow:2.0
+    container_name: traveliq-mlflow
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - traveliq_mlflow_data:/mlflow
+    networks:
+      - traveliq-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:5000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  flight-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: traveliq-flight-api:2.0
+    container_name: traveliq-flight-api
+    ports:
+      - "${FLIGHT_API_PORT:-5001}:5001"
+    environment:
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "5001"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
+      MODEL_NAME: "${MODEL_NAME:-Voyage_Flight_Price_Model}"
+      MODEL_ALIAS: "${MODEL_ALIAS:-champion}"
+      ENABLE_LOCAL_MODEL_FALLBACK: "${ENABLE_LOCAL_MODEL_FALLBACK:-1}"
+    volumes:
+      - ./models:/app/models:ro
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - traveliq-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:5001/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  gender-api:
+    build:
+      context: .
+      dockerfile: gender/Dockerfile
+    image: traveliq-gender-api:2.0
+    container_name: traveliq-gender-api
+    ports:
+      - "${GENDER_API_PORT:-5002}:5002"
+    environment:
+      GENDER_API_HOST: "0.0.0.0"
+      GENDER_API_PORT: "5002"
+    volumes:
+      - ./models/gender_classifier.joblib:/app/models/gender_classifier.joblib:ro
+    networks:
+      - traveliq-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:5002/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  streamlit-ui:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.streamlit
+    image: traveliq-streamlit:2.0
+    container_name: traveliq-streamlit
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    environment:
+      FLIGHT_API_URL: "http://flight-api:5001"
+      GENDER_API_URL: "http://gender-api:5002"
+      DATASET_DIR: "/app/travel_capstone_dataset"
+      API_TIMEOUT_SECONDS: "10"
+    volumes:
+      - ./travel_capstone_dataset:/app/travel_capstone_dataset:ro
+    depends_on:
+      flight-api:
+        condition: service_healthy
+      gender-api:
+        condition: service_healthy
+    networks:
+      - traveliq-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  traveliq-net:
+    driver: bridge
+
+volumes:
+  traveliq_mlflow_data:
+    name: traveliq_mlflow_data

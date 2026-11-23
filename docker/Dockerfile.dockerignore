@@ -1,0 +1,23 @@
+# BuildKit per-Dockerfile ignore for docker/Dockerfile (Flight API)
+.venv/
+__pycache__/
+*.py[cod]
+.git/
+backups/
+notebooks/
+screenshots/
+tests/
+docs/
+airflow/
+kubernetes/
+travel_capstone_dataset/
+mlruns/
+mlartifacts/
+mlflow.db
+models/gender_classifier.joblib
+streamlit_app.py
+assets/
+*.pdf
+*.ipynb
+.env
+.env.*

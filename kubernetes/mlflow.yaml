@@ -1,0 +1,89 @@
+# ==============================================================================
+# TRAVELIQ — In-Cluster MLflow Tracking Server & Model Registry
+# ==============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: traveliq-mlflow-pvc
+  labels:
+    app: traveliq-mlflow
+    app.kubernetes.io/part-of: traveliq
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traveliq-mlflow
+  labels:
+    app: traveliq-mlflow
+    app.kubernetes.io/part-of: traveliq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traveliq-mlflow
+  template:
+    metadata:
+      labels:
+        app: traveliq-mlflow
+        app.kubernetes.io/part-of: traveliq
+    spec:
+      containers:
+        - name: traveliq-mlflow
+          image: traveliq-mlflow:2.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+              name: http
+          volumeMounts:
+            - name: mlflow-storage
+              mountPath: /mlflow
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: mlflow-storage
+          persistentVolumeClaim:
+            claimName: traveliq-mlflow-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traveliq-mlflow
+  labels:
+    app: traveliq-mlflow
+    app.kubernetes.io/part-of: traveliq
+spec:
+  type: ClusterIP
+  selector:
+    app: traveliq-mlflow
+  ports:
+    - name: http
+      protocol: TCP
+      port: 5000
+      targetPort: 5000

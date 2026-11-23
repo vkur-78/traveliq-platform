@@ -1,0 +1,27 @@
+# ==============================================================================
+# TRAVELIQ — Shared Non-Secret Configuration (ConfigMap)
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traveliq-config
+  labels:
+    app.kubernetes.io/part-of: traveliq
+data:
+  # Model & MLflow Tracking Configuration
+  MLFLOW_TRACKING_URI: "http://traveliq-mlflow:5000"
+  MODEL_NAME: "Voyage_Flight_Price_Model"
+  MODEL_ALIAS: "champion"
+  ENABLE_LOCAL_MODEL_FALLBACK: "1"
+
+  # Flight & Gender Microservice Bindings
+  FLASK_HOST: "0.0.0.0"
+  FLASK_PORT: "5001"
+  GENDER_API_HOST: "0.0.0.0"
+  GENDER_API_PORT: "5002"
+
+  # Internal Kubernetes Service DNS for TRAVELIQ Streamlit UI
+  FLIGHT_API_URL: "http://traveliq-flight-api:5001"
+  GENDER_API_URL: "http://traveliq-gender-api:5002"
+  DATASET_DIR: "/app/travel_capstone_dataset"
+  API_TIMEOUT_SECONDS: "10"

@@ -1,0 +1,20 @@
+# BuildKit per-Dockerfile ignore for docker/Dockerfile.streamlit (Streamlit UI)
+.venv/
+__pycache__/
+*.py[cod]
+.git/
+backups/
+notebooks/
+screenshots/
+tests/
+docs/
+airflow/
+kubernetes/
+mlruns/
+mlartifacts/
+mlflow.db
+models/
+*.pdf
+*.ipynb
+.env
+.env.*

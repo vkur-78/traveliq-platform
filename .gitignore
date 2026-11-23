@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+kubernetes/secret.yaml
+
+# MLflow Local Runtime Data & Caches
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Local Backups & Pipeline Temporary Outputs
+backups/
+models/candidates/
+reports/
+
+# Logs
+*.log
+logs/
+airflow/logs/
+
+# Airflow Local Files
+airflow/airflow.db
+airflow/standalone_admin_password.txt
+airflow/__pycache__/
+
+# Python / Testing / Tool Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated Kubernetes Output
+deployment-current.yaml
+
+# Legacy Starter Report & Starter Screenshots (preserved locally, excluded from TRAVELIQ repo)
+Voyage_Analytics_Project_Report.pdf
+screenshots/01_airflow_pipeline.png
+screenshots/02_flight_prediction.png
+screenshots/03_hotel_recommendation.png
+screenshots/04_dataset_information.png
+screenshots/05_mlflow_model_registry.png
+screenshots/06_kubernetes_hpa.png
+
+# OS / IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.swp

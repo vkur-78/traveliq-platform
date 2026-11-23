@@ -1,0 +1,23 @@
+# TRAVELIQ — Render Blueprint (Alternative Free/Starter Cloud Deployment)
+# Primary recommended free host: Hugging Face Spaces Docker SDK (16 GB RAM, 2 vCPU free tier).
+# This blueprint deploys the single secure Docker container (internal Flight + Gender APIs + public Streamlit UI) on Render.
+
+services:
+  - type: web
+    name: traveliq-platform
+    runtime: docker
+    dockerfilePath: ./deploy/cloud/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PORT
+        value: "7860"
+      - key: FLIGHT_API_URL
+        value: http://127.0.0.1:5001
+      - key: GENDER_API_URL
+        value: http://127.0.0.1:5002
+      - key: MLFLOW_TRACKING_URI
+        value: disabled
+      - key: ENABLE_LOCAL_MODEL_FALLBACK
+        value: "1"

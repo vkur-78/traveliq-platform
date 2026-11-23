@@ -1,0 +1,50 @@
+# ============================================================
+# TRAVELIQ — Streamlit Web Frontend Container
+# Image: traveliq-streamlit:2.0
+# Build: docker build -f docker/Dockerfile.streamlit -t traveliq-streamlit:2.0 .
+# ============================================================
+
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/requirements-streamlit.txt ./requirements-streamlit.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements-streamlit.txt
+
+# Copy TRAVELIQ UI, theme, brand assets, shared client/recommender, and datasets
+COPY .streamlit ./.streamlit
+COPY assets ./assets
+COPY app/__init__.py ./app/__init__.py
+COPY app/config.py ./app/config.py
+COPY app/api_client.py ./app/api_client.py
+COPY app/gender_features.py ./app/gender_features.py
+COPY app/recommender.py ./app/recommender.py
+COPY streamlit_app.py ./streamlit_app.py
+COPY travel_capstone_dataset ./travel_capstone_dataset
+
+RUN useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+# Service-name defaults for Docker Compose (overridden in Kubernetes ConfigMap)
+ENV FLIGHT_API_URL=http://flight-api:5001 \
+    GENDER_API_URL=http://gender-api:5002 \
+    DATASET_DIR=/app/travel_capstone_dataset \
+    API_TIMEOUT_SECONDS=10
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:8501/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]

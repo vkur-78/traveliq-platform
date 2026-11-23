@@ -1,0 +1,113 @@
+# ==============================================================================
+# TRAVELIQ — Apache Airflow Local Orchestration Stack
+#
+# Usage:
+#   docker compose -f airflow/docker-compose.yml up --build -d
+#   Open http://localhost:8080
+#
+# Configure credentials via environment variables (never commit prod passwords):
+#   AIRFLOW_ADMIN_USER, AIRFLOW_ADMIN_PASSWORD, AIRFLOW_ADMIN_EMAIL
+# ==============================================================================
+
+name: traveliq-airflow
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: "${AIRFLOW_DB_USER:-airflow}"
+      POSTGRES_PASSWORD: "${AIRFLOW_DB_PASSWORD:-airflow}"
+      POSTGRES_DB: "${AIRFLOW_DB_NAME:-airflow}"
+    volumes:
+      - traveliq_airflow_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER:-airflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    image: apache/airflow:2.10.5
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB_NAME:-airflow}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW_ADMIN_USER: "${AIRFLOW_ADMIN_USER:-traveliq_admin}"
+      AIRFLOW_ADMIN_PASSWORD: "${AIRFLOW_ADMIN_PASSWORD:-change_me_local_dev}"
+      AIRFLOW_ADMIN_EMAIL: "${AIRFLOW_ADMIN_EMAIL:-mlops@traveliq.local}"
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "$${AIRFLOW_ADMIN_USER}" \
+          --password "$${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname TRAVELIQ \
+          --lastname MLOps \
+          --role Admin \
+          --email "$${AIRFLOW_ADMIN_EMAIL}" || true
+
+  airflow-webserver:
+    build:
+      context: ..
+      dockerfile: airflow/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB_NAME:-airflow}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__WORKERS: "1"
+      AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: "300"
+      AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8080"
+      AIRFLOW__WEBSERVER__COOKIE_SECURE: "False"
+      TRAVELIQ_PROJECT_ROOT: "/opt/airflow/project"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://host.docker.internal:5000}"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ..:/opt/airflow/project
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: airflow webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  airflow-scheduler:
+    build:
+      context: ..
+      dockerfile: airflow/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB_NAME:-airflow}"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      TRAVELIQ_PROJECT_ROOT: "/opt/airflow/project"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://host.docker.internal:5000}"
+      TRAVELIQ_FORCE_RETRAIN: "${TRAVELIQ_FORCE_RETRAIN:-0}"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ..:/opt/airflow/project
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: airflow scheduler
+
+volumes:
+  traveliq_airflow_postgres:
+    name: traveliq_airflow_postgres
