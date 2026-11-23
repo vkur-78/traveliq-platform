@@ -100,6 +100,20 @@ def inject_custom_css() -> None:
             backdrop-filter: blur(6px);
         }
 
+        @media (max-width: 768px) {
+            .block-container {
+                padding-top: 1.8rem;
+                padding-left: 0.9rem;
+                padding-right: 0.9rem;
+            }
+            .hero-title {
+                font-size: 1.55rem !important;
+            }
+            .kpi-value {
+                font-size: 1.4rem !important;
+            }
+        }
+
         /* Deep Navy Sidebar */
         [data-testid="stSidebar"] {
             background: linear-gradient(180deg, #09182E 0%, #0F284B 55%, #12325C 100%);
@@ -790,10 +804,17 @@ def render_flight_predictor(
     )
 
     if not api_statuses["flight"]["online"]:
-        st.warning(
-            f"Flight Price API ({FLIGHT_API_URL}) is currently offline. "
-            "Start it with `python -m app.app` to run live predictions."
-        )
+        if FLIGHT_API_URL.startswith("https://"):
+            st.info(
+                f"⏳ The hosted Flight Price API ({FLIGHT_API_URL}) may be waking from Render Free-Tier "
+                "idle sleep (~30–50s on the first request). Click **Predict Flight Price** or "
+                "**Refresh API Health** in the sidebar to wake it cleanly."
+            )
+        else:
+            st.warning(
+                f"Flight Price API ({FLIGHT_API_URL}) is currently offline. "
+                "Start it with `python -m app.app` to run live predictions."
+            )
 
     left_col, right_col = st.columns([1.15, 1.0], gap="large")
 
@@ -1262,10 +1283,17 @@ def render_gender_demo(
     )
 
     if not api_statuses["gender"]["online"]:
-        st.warning(
-            f"Gender Classification API ({GENDER_API_URL}) is currently offline. "
-            "Start it with `python -m app.gender_api` to run live classification."
-        )
+        if GENDER_API_URL.startswith("https://"):
+            st.info(
+                f"⏳ The hosted Gender Classification API ({GENDER_API_URL}) may be waking from Render "
+                "Free-Tier idle sleep (~30–50s on the first request). Click **Run Experimental "
+                "Classification** or **Refresh API Health** in the sidebar to wake it cleanly."
+            )
+        else:
+            st.warning(
+                f"Gender Classification API ({GENDER_API_URL}) is currently offline. "
+                "Start it with `python -m app.gender_api` to run live classification."
+            )
 
     left_col, right_col = st.columns([1.05, 1.0], gap="large")
 

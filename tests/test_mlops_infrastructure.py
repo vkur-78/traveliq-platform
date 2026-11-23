@@ -393,37 +393,29 @@ def test_jenkinsfile_structure_stages_and_safety_rules():
 
 def test_cloud_deployment_bundle_security_and_completeness():
     cloud_dir = PROJECT_ROOT / "deploy" / "cloud"
-    dockerfile = (cloud_dir / "Dockerfile").read_text(encoding="utf-8")
-    startup = (cloud_dir / "start_traveliq.sh").read_text(encoding="utf-8")
-    reqs = (cloud_dir / "requirements-cloud.txt").read_text(encoding="utf-8").lower()
-    hf_readme = (cloud_dir / "README_HF_SPACE.md").read_text(encoding="utf-8")
+    flight_df = (cloud_dir / "Dockerfile.flight").read_text(encoding="utf-8")
+    gender_df = (cloud_dir / "Dockerfile.gender").read_text(encoding="utf-8")
+    gender_reqs = (PROJECT_ROOT / "gender" / "requirements-gender.txt").read_text(encoding="utf-8").lower()
+    packages_txt = (PROJECT_ROOT / "packages.txt").read_text(encoding="utf-8")
     render_yaml = yaml.safe_load((PROJECT_ROOT / "render.yaml").read_text(encoding="utf-8"))
 
-    # Security: non-root UID 1000, internal-only APIs on 127.0.0.1, MLflow admin NOT exposed
-    assert "useradd -m -u 1000" in dockerfile
-    assert "USER user" in dockerfile
-    assert "libgomp1" in dockerfile
-    assert "MLFLOW_TRACKING_URI=disabled" in dockerfile
-    assert "EXPOSE 7860" in dockerfile
-    assert "HEALTHCHECK" in dockerfile
+    # Security: non-root users, libgomp1 for LightGBM, MLflow admin UI NOT exposed publicly
+    assert "USER appuser" in flight_df
+    assert "USER appuser" in gender_df
+    assert "libgomp1" in flight_df
+    assert "libgomp1" in packages_txt
+    assert "MLFLOW_TRACKING_URI=disabled" in flight_df
+    assert "gunicorn" in flight_df and "gunicorn" in gender_df
 
-    # Internal loopback bindings for Flask APIs + health-wait before Streamlit
-    assert "--bind 127.0.0.1:5001" in startup
-    assert "--bind 127.0.0.1:5002" in startup
-    assert "wait_for_health" in startup
-    assert "streamlit run streamlit_app.py" in startup
-
-    # Zero PyTorch / SentenceTransformers / MLflow bloat in public cloud container
-    active_reqs = "\n".join(ln for ln in reqs.splitlines() if not ln.strip().startswith("#"))
+    # Zero PyTorch / SentenceTransformers bloat in Gender cloud container
+    active_reqs = "\n".join(ln for ln in gender_reqs.splitlines() if not ln.strip().startswith("#"))
     assert "torch" not in active_reqs
     assert "sentence-transformers" not in active_reqs
-    assert "mlflow" not in active_reqs
 
-    # Valid Hugging Face Spaces Docker frontmatter + Render 2-service Blueprint
-    assert "sdk: docker" in hf_readme
-    assert "app_port: 7860" in hf_readme
+    # Valid Render 2-service Free Blueprint (no paid plans, no MLflow public service)
     render_names = {s["name"]: s for s in render_yaml["services"]}
-    assert "traveliq-flight-api" in render_names
-    assert "traveliq-gender-api" in render_names
+    assert set(render_names.keys()) == {"traveliq-flight-api", "traveliq-gender-api"}
+    assert render_names["traveliq-flight-api"]["plan"] == "free"
+    assert render_names["traveliq-gender-api"]["plan"] == "free"
     assert render_names["traveliq-flight-api"]["dockerfilePath"] == "./deploy/cloud/Dockerfile.flight"
     assert render_names["traveliq-gender-api"]["dockerfilePath"] == "./deploy/cloud/Dockerfile.gender"
