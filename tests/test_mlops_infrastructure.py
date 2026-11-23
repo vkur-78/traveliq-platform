@@ -229,16 +229,22 @@ def test_airflow_dag_parses_and_defines_expected_task_graph():
     fake_py_ops.PythonOperator = FakeOperator
     fake_py_ops.ShortCircuitOperator = FakeOperator
 
-    with patch.dict(
-        sys.modules,
-        {
-            "airflow": fake_airflow,
-            "airflow.operators": fake_ops,
-            "airflow.operators.python": fake_py_ops,
-        },
-    ):
+    fake_modules = {
+        "airflow": fake_airflow,
+        "airflow.operators": fake_ops,
+        "airflow.operators.python": fake_py_ops,
+    }
+    saved = {k: sys.modules.get(k) for k in fake_modules}
+    try:
+        sys.modules.update(fake_modules)
         ns = {}
         exec(compile(source, str(dag_file), "exec"), ns)
+    finally:
+        for k, prev in saved.items():
+            if prev is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = prev
 
     expected_tasks = {
         "validate_datasets",
@@ -268,8 +274,8 @@ def test_mlops_pipeline_validation_retrain_gate_and_quality_gate_blocking(tmp_pa
     Execute real scripts/mlops_pipeline.py stages in an isolated tmp_path sandbox
     so Phase 1 production models/ are never altered while verifying real behavior.
     """
-    import mlflow
     from scripts import mlops_pipeline as mp
+    import mlflow
 
     sandbox_uri = f"sqlite:///{(tmp_path / 'mlflow.db').resolve().as_posix()}"
     monkeypatch.setenv("MLFLOW_TRACKING_URI", sandbox_uri)
@@ -413,7 +419,11 @@ def test_cloud_deployment_bundle_security_and_completeness():
     assert "sentence-transformers" not in active_reqs
     assert "mlflow" not in active_reqs
 
-    # Valid Hugging Face Spaces Docker frontmatter + Render fallback blueprint
+    # Valid Hugging Face Spaces Docker frontmatter + Render 2-service Blueprint
     assert "sdk: docker" in hf_readme
     assert "app_port: 7860" in hf_readme
-    assert render_yaml["services"][0]["dockerfilePath"] == "./deploy/cloud/Dockerfile"
+    render_names = {s["name"]: s for s in render_yaml["services"]}
+    assert "traveliq-flight-api" in render_names
+    assert "traveliq-gender-api" in render_names
+    assert render_names["traveliq-flight-api"]["dockerfilePath"] == "./deploy/cloud/Dockerfile.flight"
+    assert render_names["traveliq-gender-api"]["dockerfilePath"] == "./deploy/cloud/Dockerfile.gender"

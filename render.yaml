@@ -1,23 +1,29 @@
-# TRAVELIQ — Render Blueprint (Alternative Free/Starter Cloud Deployment)
-# Primary recommended free host: Hugging Face Spaces Docker SDK (16 GB RAM, 2 vCPU free tier).
-# This blueprint deploys the single secure Docker container (internal Flight + Gender APIs + public Streamlit UI) on Render.
+# TRAVELIQ — Render Free Blueprint (2 Decoupled Flask REST Microservices, $0 / No Credit Card)
+# Pairs with Streamlit Community Cloud ($0 / 2.7 GB RAM) hosting streamlit_app.py over HTTPS.
+# MLflow admin UI is intentionally NOT deployed publicly.
 
 services:
   - type: web
-    name: traveliq-platform
+    name: traveliq-flight-api
     runtime: docker
-    dockerfilePath: ./deploy/cloud/Dockerfile
+    dockerfilePath: ./deploy/cloud/Dockerfile.flight
     dockerContext: .
     plan: free
-    healthCheckPath: /_stcore/health
+    healthCheckPath: /health
     envVars:
-      - key: PORT
-        value: "7860"
-      - key: FLIGHT_API_URL
-        value: http://127.0.0.1:5001
-      - key: GENDER_API_URL
-        value: http://127.0.0.1:5002
       - key: MLFLOW_TRACKING_URI
         value: disabled
       - key: ENABLE_LOCAL_MODEL_FALLBACK
         value: "1"
+      - key: MODEL_NAME
+        value: Voyage_Flight_Price_Model
+      - key: MODEL_ALIAS
+        value: champion
+
+  - type: web
+    name: traveliq-gender-api
+    runtime: docker
+    dockerfilePath: ./deploy/cloud/Dockerfile.gender
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health

@@ -6,7 +6,12 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 
-from .config import API_TIMEOUT_SECONDS, FLIGHT_API_URL, GENDER_API_URL
+from .config import (
+    API_TIMEOUT_SECONDS,
+    FLIGHT_API_URL,
+    GENDER_API_URL,
+    HEALTH_TIMEOUT_SECONDS,
+)
 
 
 def _extract_error_message(response: requests.Response) -> str:
@@ -28,7 +33,7 @@ def _extract_error_message(response: requests.Response) -> str:
 
 def check_api_health(
     base_url: str,
-    timeout: float = 3.0,
+    timeout: float = HEALTH_TIMEOUT_SECONDS,
 ) -> Dict[str, Any]:
     """Query a microservice GET /health endpoint and return normalized status info."""
     url = f"{base_url.rstrip('/')}/health"

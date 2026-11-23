@@ -1,0 +1,30 @@
+# TRAVELIQ — Lean Production Gender Classification API Container (Render Free Tier: ~95 MB RAM)
+# Pure scikit-learn 40.4 KB binary pipeline (ZERO PyTorch, ZERO SentenceTransformers).
+
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY gender/requirements-gender.txt ./requirements-gender.txt
+RUN pip install --no-cache-dir -r requirements-gender.txt
+
+COPY app/__init__.py ./app/__init__.py
+COPY app/config.py ./app/config.py
+COPY app/gender_features.py ./app/gender_features.py
+COPY app/gender_api.py ./app/gender_api.py
+COPY models/gender_classifier.joblib ./models/gender_classifier.joblib
+
+RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 5002
+
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5002} --workers 1 --threads 4 --timeout 30 app.gender_api:app"]
