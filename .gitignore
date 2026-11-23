@@ -24,6 +24,7 @@ mlartifacts/
 # Local Backups & Pipeline Temporary Outputs
 backups/
 models/candidates/
+outputs/
 reports/
 
 # Logs
